@@ -1,1 +1,150 @@
 # MachIPC
+
+A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin systems (macOS, iOS, etc.). MachIPC provides a high-level, type-safe API for sending and receiving messages between processes using Mach ports.
+
+## ⚠️ Status
+
+**This project is work in progress.** The API may change and features may be incomplete.
+
+## Features
+
+- **Type-safe messaging**: Protocol-based message system with `MachMessageConvertible`
+- **Local and remote communication**: Automatically handles both in-process and cross-process messaging
+- **Bootstrap service integration**: Uses Mach bootstrap services for service discovery
+- **Zero-copy local optimization**: Direct message passing for in-process communication
+- **Logger support**: Optional logging for debugging and monitoring
+- **Swift concurrency ready**: Built with `Sendable` conformance for modern Swift
+
+## Requirements
+
+- Swift 5.4 or later
+- macOS, iOS, or other Darwin-based systems
+
+## Installation
+
+### Swift Package Manager
+
+Add MachIPC to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/yourusername/MachIPC.git", from: "0.1.0")
+]
+```
+
+Or add it through Xcode:
+1. File → Add Package Dependencies...
+2. Enter the repository URL
+3. Select the version range
+
+## Usage
+
+### Basic Example
+
+#### Creating a Host (Receiver)
+
+```swift
+import MachIPC
+
+// Create a host that listens for messages
+let host = try MachHost<String>(endpoint: "com.example.service")
+
+// Set up message handler
+host.callback = { message in
+    print("Received message: \(message)")
+}
+
+// Keep the host alive (e.g., in your app's lifecycle)
+```
+
+#### Creating a Client (Sender)
+
+```swift
+import MachIPC
+
+// Create a client to send messages
+let client = try MachClient<String>(endpoint: "com.example.service")
+
+// Send a message
+try client.sendMessage("Hello, Mach IPC!")
+```
+
+### Custom Message Types
+
+Implement `MachMessageConvertible` for your custom types:
+
+```swift
+struct MyMessage: MachMessageConvertible {
+    let id: Int
+    let data: String
+    
+    init(machPayload: Data) {
+        // Deserialize from Data
+        let decoder = JSONDecoder()
+        self = try! decoder.decode(MyMessage.self, from: machPayload)
+    }
+    
+    var machPayload: Data {
+        // Serialize to Data
+        let encoder = JSONEncoder()
+        return try! encoder.encode(self)
+    }
+}
+
+// Use with MachHost and MachClient
+let host = try MachHost<MyMessage>(endpoint: "com.example.service")
+let client = try MachClient<MyMessage>(endpoint: "com.example.service")
+```
+
+### Logging
+
+Enable logging for debugging:
+
+```swift
+let logger = ConsoleLogger()
+let host = try MachHost<String>(endpoint: "com.example.service", logger: logger)
+let client = try MachClient<String>(endpoint: "com.example.service", logger: logger)
+```
+
+## Architecture
+
+### Components
+
+- **`MachHost<Message>`**: Receives messages on a registered endpoint
+  - Registers with Mach bootstrap service for remote access
+  - Uses `DispatchSourceMachReceive` for asynchronous message reception
+  - Supports local in-process message passing for performance
+
+- **`MachClient<Message>`**: Sends messages to a registered endpoint
+  - Automatically resolves local or remote endpoints
+  - Uses Mach message passing for cross-process communication
+  - Falls back to direct in-process calls when possible
+
+- **`MachMessageConvertible`**: Protocol for message types
+  - Provides serialization/deserialization to/from `Data`
+  - Built-in support for `Data` and `String` types
+
+- **`MachLocalhostRegistry`**: Manages in-process endpoint registry
+  - Enables zero-copy local message passing
+  - Thread-safe endpoint lookup
+
+### Message Flow
+
+1. **Local (in-process)**:
+   - Client checks local registry
+   - Direct function call to host's callback
+   - Zero-copy message passing
+
+2. **Remote (cross-process)**:
+   - Client looks up endpoint via bootstrap service
+   - Message serialized to `Data` and sent via Mach message
+   - Host receives message via `DispatchSourceMachReceive`
+   - Message deserialized and passed to callback
+
+## License
+
+[Add your license here]
+
+## Contributing
+
+Contributions are welcome! Please note that this project is work in progress, so expect API changes.
