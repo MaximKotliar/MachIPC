@@ -52,14 +52,14 @@ Add MachIPC to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/MachIPC.git", from: "0.1.0")
+    .package(url: "https://github.com/MaximKotliar/MachIPC", branch: "master")
 ]
 ```
 
 Or add it through Xcode:
 1. File → Add Package Dependencies...
 2. Enter the repository URL
-3. Select the version range
+3. Select the master branch
 
 ## Usage
 
