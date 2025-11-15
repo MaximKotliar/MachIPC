@@ -114,13 +114,23 @@ let client = try MachClient<MyMessage>(endpoint: "com.example.service")
 
 ### Logging
 
-Enable logging for debugging:
+The logging system is designed to be flexible: conform to the `Logger` protocol for custom logging implementations, or use the provided `ConsoleLogger` for simple print-based logging.
 
 ```swift
+// Use the provided ConsoleLogger for simple prints
 let logger = ConsoleLogger()
 let host = try MachHost<String>(endpoint: "com.example.service", logger: logger)
 let client = try MachClient<String>(endpoint: "com.example.service", logger: logger)
+
+// Or implement your own Logger
+struct MyLogger: Logger {
+    func log(_ level: Int32, _ message: String) {
+        // Custom logging implementation
+    }
+}
 ```
+
+⚠️ **Performance Note**: In high-speed scenarios, logging can become a bottleneck and significantly impact throughput. Use logging carefully and consider disabling it in production builds or using asynchronous logging implementations.
 
 ## Architecture
 
