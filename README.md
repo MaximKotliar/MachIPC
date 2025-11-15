@@ -157,9 +157,10 @@ struct MyLogger: Logger {
 ### Message Flow
 
 1. **Local (in-process)**:
-   - Client checks local registry
+   - Client automatically resolves if host is in the same process via local registry
    - Direct function call to host's callback
    - Zero-copy message passing
+   - Note: Local resolution can be disabled via `MachLocalhostRegistry.shared.isLookupEnabled`
 
 2. **Remote (cross-process)**:
    - Client looks up endpoint via bootstrap service
