@@ -6,6 +6,14 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 
 **This project is work in progress.** The API may change and features may be incomplete.
 
+## TODO
+
+- [ ] Extensive tests
+- [ ] Add secure layer
+- [ ] Proper benchmarks
+- [ ] RPC layer
+- [ ] Codegen over RPC (protobuf?)
+
 ## Features
 
 - **Type-safe messaging**: Protocol-based message system with `MachMessageConvertible`
@@ -173,5 +181,4 @@ struct MyLogger: Logger {
 This project is licensed under the MIT License.
 
 ## Contributing
-
 Contributions are welcome! Please note that this project is work in progress, so expect API changes.
