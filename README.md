@@ -143,7 +143,7 @@ let client = try MachClient<String>(endpoint: "com.example.service", logger: log
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License.
 
 ## Contributing
 
