@@ -1,0 +1,27 @@
+# Benchmark workflow - runs performance benchmarks
+# Benchmarks are optional and won't block PRs
+
+name: Benchmarks
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  benchmarks:
+    name: Run Benchmarks
+    runs-on: macos-latest
+    continue-on-error: true # Don't block PRs if benchmarks fail
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build
+      run: swift build -v
+      
+    - name: Run benchmarks
+      run: swift test --filter BenchmarkTests
+

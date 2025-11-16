@@ -2,6 +2,7 @@
 
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20iOS-lightgrey)
 ![Tests](https://github.com/MaximKotliar/MachIPC/actions/workflows/swift.yml/badge.svg)
+![Benchmarks](https://github.com/MaximKotliar/MachIPC/actions/workflows/benchmarks.yml/badge.svg)
 
 A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin systems (macOS, iOS, etc.). MachIPC provides a high-level, type-safe API for sending and receiving messages between processes using Mach ports.
 
@@ -261,7 +262,7 @@ Configuration options:
 
 1. **Local (in-process)**:
    - Client automatically resolves if host is in the same process via local registry
-   - Message delivered asynchronously via `DispatchQueue.global(qos: .userInitiated).async`
+   - Direct function call to host's `onReceive` handler
    - Zero-copy message passing
    - Note: Local resolution can be disabled via `MachLocalhostRegistry.shared.isLookupEnabled`
 
