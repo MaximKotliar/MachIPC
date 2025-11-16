@@ -31,12 +31,12 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 MachIPC is optimized for high-throughput messaging:
 
 - **Up to 1,000,000 messages per second** on a single core
-- **~1 μs** per message latency
+- **~1 μs** per message latency — comparable to single-process performance (standard `DispatchQueue.async` takes ~2.5 μs)
 - **At least 2x faster** than XPC for message passing
 
 These benchmarks demonstrate the efficiency of direct Mach message passing compared to higher-level IPC frameworks.
 
-## Security 🔒
+## Security ⚠️
 
 ⚠️ **Important**: Messages sent through MachIPC are **not encrypted**. Do not use this library for transmitting sensitive information such as passwords, authentication tokens, or personal data without additional encryption.
 
@@ -210,6 +210,7 @@ configuration.logger = ConsoleLogger() // Optional logger
 configuration.bufferSize = 1024 * 512 // Increase for larger messages (default: 256KB)
 configuration.logsThroughput = true // Log messages per second
 configuration.highPerformanceModeThreshold = 200_000 // Switch to no-wait mode at this throughput
+configuration.threadPriority = 10 // Higher priority for lower latency (default: 0)
 
 let host = try MachHost<String>(
     endpoint: "com.example.service",
@@ -225,6 +226,7 @@ Configuration options:
 - **`bufferSize`**: Buffer size for receiving messages (default: 256KB)
 - **`logsThroughput`**: Enable throughput logging every second (default: `false`)
 - **`highPerformanceModeThreshold`**: Messages per second threshold to switch to high-performance mode (default: 200,000)
+- **`threadPriority`**: Thread priority for receiver thread (0 = normal, higher = higher priority, range: -127 to 127, default: 0)
 
 ## Architecture 🏗️
 
@@ -259,7 +261,7 @@ Configuration options:
 
 1. **Local (in-process)**:
    - Client automatically resolves if host is in the same process via local registry
-   - Direct function call to host's `onReceive` handler
+   - Message delivered asynchronously via `DispatchQueue.global(qos: .userInitiated).async`
    - Zero-copy message passing
    - Note: Local resolution can be disabled via `MachLocalhostRegistry.shared.isLookupEnabled`
 

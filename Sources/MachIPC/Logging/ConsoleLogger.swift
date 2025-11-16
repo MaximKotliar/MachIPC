@@ -6,6 +6,9 @@
 //
 
 public final class ConsoleLogger: Logger {
+    
+    public init() {}
+    
     @inline(__always)
     public func log(_ level: Int32, _ message: String) {
         print(message)

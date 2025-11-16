@@ -48,9 +48,7 @@ public final class MachClient<Message: MachPayloadProvider> {
             guard let receiver = weakReceiver.object else {
                 throw MachError(0, "Registered local receiver is deallocated")
             }
-            try withUnsafePointer(to: message) { messagePtr in
-                try receiver.receiveLocalMessage(messagePtr)
-            }
+            try receiver.receiveLocalMessage(message)
         case .remote(let port):
             try sendRemoteMessage(message, receiverPort: port)
         case .none:

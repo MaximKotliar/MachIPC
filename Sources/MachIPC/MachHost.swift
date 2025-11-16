@@ -8,7 +8,26 @@
 import Foundation
 import Darwin
 
+struct EventSpeedMeasurement {
+    private var timestamp = DispatchTime.now()
+    private var eventsCount: Int = 0
 
+    mutating func trackEvent(count: Int = 1) {
+        eventsCount += count
+    }
+
+    mutating func collectMeasurement() -> Int? {
+        let now = DispatchTime.now()
+        let elapsed = now.uptimeNanoseconds - timestamp.uptimeNanoseconds
+        if elapsed > NSEC_PER_SEC {
+            let throughput = eventsCount
+            timestamp = DispatchTime.now()
+            eventsCount = 0
+            return throughput
+        }
+        return nil
+    }
+}
 
 public final class MachHost<Message: MachPayloadProvider>: Sendable {
     
@@ -20,6 +39,8 @@ public final class MachHost<Message: MachPayloadProvider>: Sendable {
     private let onReceive: ((Message) -> Void)?
     nonisolated(unsafe) private var highPerformanceMode = false
     
+    private lazy var localThroughputMeasurement = EventSpeedMeasurement()
+    
     public init(endpoint: String, configuration: MachHostConfiguration = .default, onReceive: @escaping (Message) -> Void) throws {
         self.configuration = configuration
         self.endpoint = endpoint
@@ -29,36 +50,44 @@ public final class MachHost<Message: MachPayloadProvider>: Sendable {
         MachLocalhostRegistry.shared.register(host: self)
     }
     
-    internal func receiveLocalMessage(_ ptr: UnsafeRawPointer) throws {
-        onReceive?(ptr.load(as: Message.self))
+    internal func receiveLocalMessage(_ message: Message) throws {
+        if configuration.logsThroughput {
+            localThroughputMeasurement.trackEvent()
+            if let throughput = localThroughputMeasurement.collectMeasurement() {
+                logger?.log(0, " local messages throughput: \(throughput) per second")
+            }
+        }
+        onReceive?(message)
     }
     
     private func setupReceiverThread() {
-        let opBufferSize = 1024 * 256
+        let opBufferSize = configuration.bufferSize
         let opBuffer = UnsafeMutableRawPointer.allocate(byteCount: opBufferSize, alignment: 8)
         
-        var lastSpeedUpdateTime = DispatchTime.now()
-        var lastMessagesCount = 0
+        var speedMeasurement = EventSpeedMeasurement()
+        let threadPriority = configuration.threadPriority
         let thread = Thread { [weak self] in
+            // Set thread priority if configured
+            if threadPriority != 0 {
+                Thread.setCurrentThreadPriority(threadPriority, logger: self?.logger)
+            }
+            
             while let self {
                 if self.receiveRemoteMessage(into: opBuffer, ofSize: opBufferSize) {
-                    lastMessagesCount += 1
+                    speedMeasurement.trackEvent()
                 }
-                let now = DispatchTime.now()
-                // check once per second
-                guard now.uptimeNanoseconds - lastSpeedUpdateTime.uptimeNanoseconds > NSEC_PER_SEC else { continue }
-                lastSpeedUpdateTime = now
-                let throughput = lastMessagesCount
-                if configuration.logsThroughput {
-                    logger?.log(0, "\(self) throughput: \(throughput)")
+                if let throughput = speedMeasurement.collectMeasurement() {
+                    if configuration.logsThroughput {
+                        logger?.log(0, "remote messages throughput: \(throughput) per second")
+                    }
+                    self.highPerformanceMode = throughput > configuration.highPerformanceModeThreshold
                 }
-                lastMessagesCount = 0
-                self.highPerformanceMode = throughput > configuration.highPerformanceModeThreshold
             }
         }
         thread.name = "com.mach-ipc.host-receive"
         thread.start()
     }
+
     
     private func receiveRemoteMessage(into buffer: UnsafeMutableRawPointer,
                                       ofSize bufferSize: Int) -> Bool {
@@ -97,6 +126,7 @@ public final class MachHost<Message: MachPayloadProvider>: Sendable {
 // MARK: Setup mach host
 extension MachHost {
     
+
     private static func registerEndpoint(withName endpointName: String, logger: Logger?) throws -> mach_port_t {
         var receivePort: mach_port_t = 0
         let kr = bootstrap_check_in(bootstrap_port, endpointName, &receivePort)
