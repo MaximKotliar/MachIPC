@@ -19,14 +19,14 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 
 ## Features
 
-- **Type-safe messaging**: Protocol-based message system with `MachPayloadProvider` and `MachMessageConvertible`
-- **Local and remote communication**: Automatically handles both in-process and cross-process messaging
+- **Type-safe messaging** 🔐: Protocol-based message system with `MachPayloadProvider` and `MachMessageConvertible`
+- **Local and remote communication** 🌐: Automatically handles both in-process and cross-process messaging
 - **Bootstrap service integration**: Uses Mach bootstrap services for service discovery
 - **Zero-copy local optimization**: Direct message passing for in-process communication
 - **Logger support**: Optional logging for debugging and monitoring
 - **Swift concurrency ready**: Built with `Sendable` conformance for modern Swift
 
-## Performance
+## Performance ⚡
 
 MachIPC is optimized for high-throughput messaging:
 
@@ -36,7 +36,7 @@ MachIPC is optimized for high-throughput messaging:
 
 These benchmarks demonstrate the efficiency of direct Mach message passing compared to higher-level IPC frameworks.
 
-## Security
+## Security 🔒
 
 ⚠️ **Important**: Messages sent through MachIPC are **not encrypted**. Do not use this library for transmitting sensitive information such as passwords, authentication tokens, or personal data without additional encryption.
 
@@ -226,7 +226,7 @@ Configuration options:
 - **`logsThroughput`**: Enable throughput logging every second (default: `false`)
 - **`highPerformanceModeThreshold`**: Messages per second threshold to switch to high-performance mode (default: 200,000)
 
-## Architecture
+## Architecture 🏗️
 
 ### Components
 
@@ -270,7 +270,7 @@ Configuration options:
    - Message constructed directly from raw buffer using `init(machPayloadBuffer:count:)`
    - Message passed to `onReceive` callback
 
-## Testing
+## Testing 🧪
 
 Run all tests:
 ```bash
