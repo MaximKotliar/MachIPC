@@ -104,7 +104,13 @@ extension MachHost {
         var receivePort: mach_port_t = 0
         let kr = bootstrap_check_in(bootstrap_port, endpointName, &receivePort)
         guard kr == KERN_SUCCESS else {
-            throw MachError(Int(kr), "Error while bootstrapping port")
+            let message = switch kr {
+            case 1100:
+                "Error while bootstrapping port: service with same endpoint name is already registered"
+            default:
+                "Error while bootstrapping port"
+            }
+            throw MachError(Int(kr), message)
         }
         
         // Insert send right for the port
