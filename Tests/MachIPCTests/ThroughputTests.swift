@@ -64,7 +64,7 @@ final class ThroughputTests: XCTestCase {
     // MARK: - Local Throughput Tests
     
     func testLocalThroughput() throws {
-        var messageCount = 0
+        nonisolated(unsafe) var messageCount = 0
         let totalMessages = 100_000
         let expectation = XCTestExpectation(description: "All messages received")
         expectation.expectedFulfillmentCount = totalMessages
@@ -109,7 +109,7 @@ final class ThroughputTests: XCTestCase {
     }
     
     func testLocalThroughputWithData() throws {
-        var messageCount = 0
+        nonisolated(unsafe) var messageCount = 0
         let totalMessages = 50_000
         let messageSize = 1024 // 1KB per message
         let testData = Data(repeating: 0xAA, count: messageSize)
@@ -158,7 +158,7 @@ final class ThroughputTests: XCTestCase {
     
     // MARK: - Remote Throughput Tests (within same process)
     func testRemoteThroughput() throws {
-        var messageCount = 0
+        nonisolated(unsafe)  var messageCount = 0
         let totalMessages = 500_000
         let expectedThroughput = 200_000
         let expectation = XCTestExpectation(description: "All messages received")
@@ -212,7 +212,7 @@ final class ThroughputTests: XCTestCase {
     }
     
     func testRemoteThroughputWithData() throws {
-        var messageCount = 0
+        nonisolated(unsafe) var messageCount = 0
         let totalMessages = 25_000
         let messageSize = 512 // 512 bytes per message
         let testData = Data(repeating: 0xBB, count: messageSize)
@@ -269,7 +269,7 @@ final class ThroughputTests: XCTestCase {
     // MARK: - Latency Tests
     
     func testLocalLatency() throws {
-        var latencies: [TimeInterval] = []
+        nonisolated(unsafe) var latencies: [TimeInterval] = []
         let iterations = 10_000
         
         let endpoint = "com.test.latency.\(UUID().uuidString)"
@@ -314,7 +314,7 @@ final class ThroughputTests: XCTestCase {
         let maxLatency = latencies.max() ?? 0
         
         print("Local latency - Avg: \(String(format: "%.3f", avgLatency))μs, Min: \(String(format: "%.3f", minLatency))μs, Max: \(String(format: "%.3f", maxLatency))μs")
-        
+        _ = host // keep host alive
         XCTAssertLessThan(avgLatency, 10.0, "Average latency should be less than 10μs locally")
     }
 }
