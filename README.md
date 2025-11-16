@@ -12,10 +12,10 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 ## TODO
 
 - [x] Extensive tests
-- [ ] Add secure layer
 - [x] Proper benchmarks
+- [ ] Add secure layer
 - [ ] RPC layer
-- [ ] Codegen over RPC (protobuf?)
+- [ ] Flatbuffer convenience layer
 
 ## Features
 
