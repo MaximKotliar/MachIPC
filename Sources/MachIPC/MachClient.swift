@@ -103,8 +103,5 @@ public final class MachClient<Message: MachPayloadProvider> {
             
             logger?.log(0, "Sent message to port \(String(describing: receiverPort))")
         }
-
     }
 }
-
-
