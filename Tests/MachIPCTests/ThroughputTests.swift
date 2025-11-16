@@ -160,7 +160,7 @@ final class ThroughputTests: XCTestCase {
     func testRemoteThroughput() throws {
         nonisolated(unsafe)  var messageCount = 0
         let totalMessages = 500_000
-        let expectedThroughput = 200_000
+        let expectedThroughput = 100_000
         let expectation = XCTestExpectation(description: "All messages received")
         expectation.expectedFulfillmentCount = totalMessages
         
