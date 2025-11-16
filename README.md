@@ -1,5 +1,7 @@
 # MachIPC
 
+![Tests](https://github.com/MaximKotliar/MachIPC/actions/workflows/swift.yml/badge.svg)
+
 A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin systems (macOS, iOS, etc.). MachIPC provides a high-level, type-safe API for sending and receiving messages between processes using Mach ports.
 
 ## ⚠️ Status
