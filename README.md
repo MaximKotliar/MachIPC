@@ -192,7 +192,8 @@ struct MyLogger: Logger {
 
 - **`MachHost<Message>`**: Receives messages on a registered endpoint
   - Registers with Mach bootstrap service for remote access
-  - Uses `DispatchSourceMachReceive` for asynchronous message reception
+  - Uses a dedicated receiver thread for high-performance message reception
+  - Automatically switches to high-performance mode (no-wait) at high throughput (>200k msg/s)
   - Supports local in-process message passing for performance
 
 - **`MachClient<Message>`**: Sends messages to a registered endpoint
@@ -217,15 +218,16 @@ struct MyLogger: Logger {
 
 1. **Local (in-process)**:
    - Client automatically resolves if host is in the same process via local registry
-   - Direct function call to host's callback
+   - Direct function call to host's `onReceive` handler
    - Zero-copy message passing
    - Note: Local resolution can be disabled via `MachLocalhostRegistry.shared.isLookupEnabled`
 
 2. **Remote (cross-process)**:
    - Client looks up endpoint via bootstrap service
-   - Message serialized to `Data` and sent via Mach message
-   - Host receives message via `DispatchSourceMachReceive`
-   - Message deserialized and passed to callback
+   - Message payload accessed via `withPayloadBuffer` and sent via Mach message
+   - Host receives message via dedicated receiver thread
+   - Message constructed directly from raw buffer using `init(machPayloadBuffer:count:)`
+   - Message passed to `onReceive` callback
 
 ## License
 

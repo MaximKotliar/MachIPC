@@ -8,47 +8,72 @@
 import Foundation
 import Darwin
 
-public final class MachHost<Message: MachMessageConvertible>: Sendable {
+enum MachHostConstants {
+    @inline(__always)
+    static let idleReceiverThreadTimeout: mach_msg_timeout_t = 1000 // 1sec
+    // Switch to high performance (no-wait) mode after reaching this speed (messages per second)
+    @inline(__always)
+    static let highPerformanceModeThreshold: Int = 200_000
+}
+
+public final class MachHost<Message: MachPayloadProvider>: Sendable {
     
-    private let source: DispatchSourceMachReceive
     public let endpoint: String
     public let port: mach_port_t
     public let logger: Logger?
-    nonisolated(unsafe) public var callback: ((Message) -> Void)?
     
-    public init(endpoint: String, logger: Logger? = nil) throws {
+    private let onReceive: ((Message) -> Void)?
+    nonisolated(unsafe) private var highPerformanceMode = false
+    
+    public init(endpoint: String, logger: Logger? = nil, onReceive: @escaping (Message) -> Void) throws {
         self.logger = logger
         self.endpoint = endpoint
         self.port = try Self.registerEndpoint(withName: endpoint, logger: logger)
-        self.source = DispatchSource.makeMachReceiveSource(port: port)
-        self.setupMachReceiveSource()
+        self.onReceive = onReceive
+        self.setupReceiverThread()
         MachLocalhostRegistry.shared.register(host: self)
     }
     
     internal func receiveLocalMessage(_ ptr: UnsafeRawPointer) throws {
-        callback?(ptr.load(as: Message.self))
+        onReceive?(ptr.load(as: Message.self))
     }
     
-    private func setupMachReceiveSource() {
+    private func setupReceiverThread() {
         let opBufferSize = 1024 * 256
         let opBuffer = UnsafeMutableRawPointer.allocate(byteCount: opBufferSize, alignment: 8)
-        source.setEventHandler { [weak self] in
-            guard let self else { return }
-            self.receiveRemoteMessage(into: opBuffer, ofSize: opBufferSize)
+        
+        var lastSpeedUpdateTime = DispatchTime.now()
+        var lastMessagesCount = 0
+        let thread = Thread { [weak self] in
+            while let self {
+                if self.receiveRemoteMessage(into: opBuffer, ofSize: opBufferSize) {
+                    lastMessagesCount += 1
+                }
+                let now = DispatchTime.now()
+                // check once per second
+                guard now.uptimeNanoseconds - lastSpeedUpdateTime.uptimeNanoseconds > NSEC_PER_SEC else { continue }
+                lastSpeedUpdateTime = now
+                let throughput = lastMessagesCount
+                print("Messages per second: \(throughput)")
+                lastMessagesCount = 0
+                self.highPerformanceMode = throughput > MachHostConstants.highPerformanceModeThreshold
+            }
         }
-        source.resume()
+        thread.name = "com.mach-ipc.host-receive"
+        thread.start()
     }
     
     private func receiveRemoteMessage(into buffer: UnsafeMutableRawPointer,
-                                      ofSize bufferSize: Int) {
+                                      ofSize bufferSize: Int) -> Bool {
         var kr: Int32 = -1
+        let timeout = highPerformanceMode ? 0 : MachHostConstants.idleReceiverThreadTimeout
         kr = buffer.withMemoryRebound(to: mach_msg_header_t.self, capacity: 1) { pointer in
             mach_msg_overwrite(pointer,
                                MACH_RCV_MSG | MACH_RCV_OVERWRITE | MACH_RCV_TIMEOUT,
                                0,
                                mach_msg_size_t(bufferSize),
                                port,
-                               0,
+                               timeout,
                                mach_port_name_t(MACH_PORT_NULL),
                                pointer,
                                mach_msg_size_t(bufferSize))
@@ -57,14 +82,18 @@ public final class MachHost<Message: MachMessageConvertible>: Sendable {
         switch kr {
         case KERN_SUCCESS:
             let packet = buffer.assumingMemoryBound(to: MachPacketView.self)
-            let payload = Data(bytes: buffer.advanced(by: MemoryLayout<MachPacketView>.size), count: Int(packet.pointee.payloadSize))
-            let message = Message(machPayload: payload)
-            callback?(message)
+            let payloadOffset = MemoryLayout<MachPacketView>.size
+            let payloadBuffer = buffer.advanced(by: payloadOffset)
+            let payloadSize = Int(packet.pointee.payloadSize)
+            let message = Message(machPayloadBuffer: payloadBuffer, count: payloadSize)
+            self.onReceive?(message)
+            return true
         case MACH_RCV_TIMED_OUT:
             break
         default:
             logger?.log(5, "mach_msg error: \(kr)")
         }
+        return false
     }
 }
 
