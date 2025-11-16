@@ -7,7 +7,7 @@
 
 import Darwin.Mach
 
-public final class MachClient<Message: MachMessageConvertible> {
+public final class MachClient<Message: MachPayloadProvider> {
     
     enum Host {
         case local(Weak<MachHost<Message>>)
@@ -60,7 +60,7 @@ public final class MachClient<Message: MachMessageConvertible> {
     
     /// Send a message to the remote host.
     private func sendRemoteMessage(_ message: Message, receiverPort: mach_port_t) throws {
-        let dataSize = message.machPayload.count
+        let dataSize = message.payloadCount
         let packetSize = MachPacketView.sizeWithoutData + dataSize
         let alignment = 8
         // align memory to 4 bytes
@@ -84,9 +84,8 @@ public final class MachClient<Message: MachMessageConvertible> {
                 .storeBytes(of: Int64(dataSize), as: Int64.self)
             
             let payloadOffset = MachPacketView.sizeWithoutData
-            message.machPayload.withUnsafeBytes { (messageBytes: UnsafeRawBufferPointer) -> Void in
-                guard let src = messageBytes.baseAddress else { return }
-                rawPointer.advanced(by: payloadOffset).copyMemory(from: src, byteCount: dataSize)
+            try message.withPayloadBuffer { (src, count) in
+                rawPointer.advanced(by: payloadOffset).copyMemory(from: src, byteCount: count)
             }
             
             let kr = mach_msg(
@@ -102,7 +101,7 @@ public final class MachClient<Message: MachMessageConvertible> {
                 throw MachError(Int(kr), "Failed to send Mach message: \(kr)")
             }
             
-            logger?.log(0, "Sent message to port \(String(describing: receiverPort)): \(message.machPayload)")
+            logger?.log(0, "Sent message to port \(String(describing: receiverPort))")
         }
 
     }
