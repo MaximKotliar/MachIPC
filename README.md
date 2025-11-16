@@ -16,7 +16,7 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 
 ## Features
 
-- **Type-safe messaging**: Protocol-based message system with `MachMessageConvertible`
+- **Type-safe messaging**: Protocol-based message system with `MachPayloadProvider` and `MachMessageConvertible`
 - **Local and remote communication**: Automatically handles both in-process and cross-process messaging
 - **Bootstrap service integration**: Uses Mach bootstrap services for service discovery
 - **Zero-copy local optimization**: Direct message passing for in-process communication
@@ -95,8 +95,9 @@ try client.sendMessage("Hello, Mach IPC!")
 
 ### Custom Message Types
 
-Implement `MachMessageConvertible` for your custom types:
+For custom types, you can either:
 
+1. **Use `MachMessageConvertible`** (recommended for most cases):
 ```swift
 struct MyMessage: MachMessageConvertible {
     let id: Int
@@ -114,9 +115,54 @@ struct MyMessage: MachMessageConvertible {
         return try! encoder.encode(self)
     }
 }
+```
 
-// Use with MachHost and MachClient
-let host = try MachHost<MyMessage>(endpoint: "com.example.service")
+2. **Or implement `MachPayloadProvider` directly** for maximum performance:
+```swift
+struct MyMessage: MachPayloadProvider {
+    let id: Int
+    let data: String
+    
+    init(machPayloadBuffer: UnsafeRawPointer, count: Int) {
+        // Deserialize directly from buffer
+        let data = Data(bytes: machPayloadBuffer, count: count)
+        let decoder = JSONDecoder()
+        self = try! decoder.decode(MyMessage.self, from: data)
+    }
+    
+    func withPayloadBuffer<T>(_ body: (UnsafeRawPointer, Int) throws -> T) rethrows -> T {
+        // Serialize to buffer
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(self)
+        return try data.withUnsafeBytes { bytes in
+            try body(bytes.baseAddress!, bytes.count)
+        }
+    }
+    
+    var payloadCount: Int {
+        let encoder = JSONEncoder()
+        return (try? encoder.encode(self).count) ?? 0
+    }
+}
+```
+
+3. **Automatic support for `Codable` types**:
+```swift
+struct MyMessage: Codable {
+    let id: Int
+    let data: String
+}
+// Automatically conforms to MachMessageConvertible via JSON encoding
+```
+
+Use with `MachHost` and `MachClient`:
+```swift
+let host = try MachHost<MyMessage>(
+    endpoint: "com.example.service",
+    onReceive: { message in
+        print("Received: \(message)")
+    }
+)
 let client = try MachClient<MyMessage>(endpoint: "com.example.service")
 ```
 
@@ -154,9 +200,14 @@ struct MyLogger: Logger {
   - Uses Mach message passing for cross-process communication
   - Falls back to direct in-process calls when possible
 
-- **`MachMessageConvertible`**: Protocol for message types
+- **`MachPayloadProvider`**: Lowest-level protocol for raw buffer access
+  - Direct buffer access for maximum performance
+  - Used by `MachHost` and `MachClient` for message handling
+  
+- **`MachMessageConvertible`**: Data-level protocol extending `MachPayloadProvider`
   - Provides serialization/deserialization to/from `Data`
   - Built-in support for `Data` and `String` types
+  - Automatic support for all `Codable` types via JSON encoding
 
 - **`MachLocalhostRegistry`**: Manages in-process endpoint registry
   - Enables zero-copy local message passing
