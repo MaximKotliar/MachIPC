@@ -8,9 +8,9 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 
 ## TODO
 
-- [ ] Extensive tests
+- [x] Extensive tests
 - [ ] Add secure layer
-- [ ] Proper benchmarks
+- [x] Proper benchmarks
 - [ ] RPC layer
 - [ ] Codegen over RPC (protobuf?)
 
@@ -266,6 +266,18 @@ Configuration options:
    - Host receives message via dedicated receiver thread
    - Message constructed directly from raw buffer using `init(machPayloadBuffer:count:)`
    - Message passed to `onReceive` callback
+
+## Testing
+
+Run all tests:
+```bash
+swift test
+```
+
+Run benchmarks:
+```bash
+swift test --filter BenchmarkTests
+```
 
 ## License
 

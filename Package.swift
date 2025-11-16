@@ -10,6 +10,10 @@ let package = Package(
     ],
     targets: [
         .target(name: "MachIPC", dependencies: ["DarwinBridge"]),
-        .target(name: "DarwinBridge")
+        .target(name: "DarwinBridge"),
+        .testTarget(
+            name: "MachIPCTests",
+            dependencies: ["MachIPC"]
+        )
     ]
 )
