@@ -173,9 +173,14 @@ The logging system is designed to be flexible: conform to the `Logger` protocol 
 ```swift
 // Use the provided ConsoleLogger for simple prints
 let logger = ConsoleLogger()
+var configuration = MachHostConfiguration.default
+configuration.logger = logger
+configuration.logsThroughput = true // Enable throughput logging
+configuration.highPerformanceModeThreshold = 200_000 // Messages per second
+
 let host = try MachHost<String>(
     endpoint: "com.example.service",
-    logger: logger,
+    configuration: configuration,
     onReceive: { message in
         print("Received: \(message)")
     }
@@ -192,6 +197,32 @@ struct MyLogger: Logger {
 
 ⚠️ **Performance Note**: In high-speed scenarios, logging can become a bottleneck and significantly impact throughput. Use logging carefully and consider disabling it in production builds or using asynchronous logging implementations.
 
+### Configuration
+
+`MachHost` can be configured using `MachHostConfiguration`:
+
+```swift
+var configuration = MachHostConfiguration.default
+configuration.logger = ConsoleLogger() // Optional logger
+configuration.bufferSize = 1024 * 512 // Increase for larger messages (default: 256KB)
+configuration.logsThroughput = true // Log messages per second
+configuration.highPerformanceModeThreshold = 200_000 // Switch to no-wait mode at this throughput
+
+let host = try MachHost<String>(
+    endpoint: "com.example.service",
+    configuration: configuration,
+    onReceive: { message in
+        print("Received: \(message)")
+    }
+)
+```
+
+Configuration options:
+- **`logger`**: Optional logger for debugging (default: `ConsoleLogger()`)
+- **`bufferSize`**: Buffer size for receiving messages (default: 256KB)
+- **`logsThroughput`**: Enable throughput logging every second (default: `false`)
+- **`highPerformanceModeThreshold`**: Messages per second threshold to switch to high-performance mode (default: 200,000)
+
 ## Architecture
 
 ### Components
@@ -199,7 +230,8 @@ struct MyLogger: Logger {
 - **`MachHost<Message>`**: Receives messages on a registered endpoint
   - Registers with Mach bootstrap service for remote access
   - Uses a dedicated receiver thread for high-performance message reception
-  - Automatically switches to high-performance mode (no-wait) at high throughput (>200k msg/s)
+  - Configurable via `MachHostConfiguration` (logger, buffer size, throughput logging, performance thresholds)
+  - Automatically switches to high-performance mode (no-wait) at configurable throughput threshold (default: 200k msg/s)
   - Supports local in-process message passing for performance
 
 - **`MachClient<Message>`**: Sends messages to a registered endpoint

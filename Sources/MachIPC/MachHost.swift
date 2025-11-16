@@ -8,27 +8,22 @@
 import Foundation
 import Darwin
 
-enum MachHostConstants {
-    @inline(__always)
-    static let idleReceiverThreadTimeout: mach_msg_timeout_t = 1000 // 1sec
-    // Switch to high performance (no-wait) mode after reaching this speed (messages per second)
-    @inline(__always)
-    static let highPerformanceModeThreshold: Int = 200_000
-}
+
 
 public final class MachHost<Message: MachPayloadProvider>: Sendable {
     
     public let endpoint: String
     public let port: mach_port_t
-    public let logger: Logger?
-    
+    public let configuration: MachHostConfiguration
+
+    private var logger: Logger? { configuration.logger }
     private let onReceive: ((Message) -> Void)?
     nonisolated(unsafe) private var highPerformanceMode = false
     
-    public init(endpoint: String, logger: Logger? = nil, onReceive: @escaping (Message) -> Void) throws {
-        self.logger = logger
+    public init(endpoint: String, configuration: MachHostConfiguration = .default, onReceive: @escaping (Message) -> Void) throws {
+        self.configuration = configuration
         self.endpoint = endpoint
-        self.port = try Self.registerEndpoint(withName: endpoint, logger: logger)
+        self.port = try Self.registerEndpoint(withName: endpoint, logger: configuration.logger)
         self.onReceive = onReceive
         self.setupReceiverThread()
         MachLocalhostRegistry.shared.register(host: self)
@@ -54,9 +49,11 @@ public final class MachHost<Message: MachPayloadProvider>: Sendable {
                 guard now.uptimeNanoseconds - lastSpeedUpdateTime.uptimeNanoseconds > NSEC_PER_SEC else { continue }
                 lastSpeedUpdateTime = now
                 let throughput = lastMessagesCount
-                print("Messages per second: \(throughput)")
+                if configuration.logsThroughput {
+                    logger?.log(0, "\(self) throughput: \(throughput)")
+                }
                 lastMessagesCount = 0
-                self.highPerformanceMode = throughput > MachHostConstants.highPerformanceModeThreshold
+                self.highPerformanceMode = throughput > configuration.highPerformanceModeThreshold
             }
         }
         thread.name = "com.mach-ipc.host-receive"
