@@ -71,12 +71,12 @@ Or add it through Xcode:
 import MachIPC
 
 // Create a host that listens for messages
-let host = try MachHost<String>(endpoint: "com.example.service")
-
-// Set up message handler
-host.callback = { message in
-    print("Received message: \(message)")
-}
+let host = try MachHost<String>(
+    endpoint: "com.example.service",
+    onReceive: { message in
+        print("Received message: \(message)")
+    }
+)
 
 // Keep the host alive (e.g., in your app's lifecycle)
 ```
@@ -173,7 +173,13 @@ The logging system is designed to be flexible: conform to the `Logger` protocol 
 ```swift
 // Use the provided ConsoleLogger for simple prints
 let logger = ConsoleLogger()
-let host = try MachHost<String>(endpoint: "com.example.service", logger: logger)
+let host = try MachHost<String>(
+    endpoint: "com.example.service",
+    logger: logger,
+    onReceive: { message in
+        print("Received: \(message)")
+    }
+)
 let client = try MachClient<String>(endpoint: "com.example.service", logger: logger)
 
 // Or implement your own Logger
