@@ -8,26 +8,7 @@
 import Foundation
 import Darwin
 
-struct EventSpeedMeasurement {
-    private var timestamp = DispatchTime.now()
-    private var eventsCount: Int = 0
 
-    mutating func trackEvent(count: Int = 1) {
-        eventsCount += count
-    }
-
-    mutating func collectMeasurement() -> Int? {
-        let now = DispatchTime.now()
-        let elapsed = now.uptimeNanoseconds - timestamp.uptimeNanoseconds
-        if elapsed > NSEC_PER_SEC {
-            let throughput = eventsCount
-            timestamp = DispatchTime.now()
-            eventsCount = 0
-            return throughput
-        }
-        return nil
-    }
-}
 
 public final class MachHost<Message: MachPayloadProvider>: Sendable {
     
@@ -36,12 +17,12 @@ public final class MachHost<Message: MachPayloadProvider>: Sendable {
     public let configuration: MachHostConfiguration
 
     private var logger: Logger? { configuration.logger }
-    private let onReceive: ((Message) -> Void)?
+    private let onReceive: (@Sendable (Message) -> Void)?
     nonisolated(unsafe) private var highPerformanceMode = false
     
-    private lazy var localThroughputMeasurement = EventSpeedMeasurement()
+    nonisolated(unsafe) private var localThroughputMeasurement = EventSpeedMeasurement()
     
-    public init(endpoint: String, configuration: MachHostConfiguration = .default, onReceive: @escaping (Message) -> Void) throws {
+    public init(endpoint: String, configuration: MachHostConfiguration = .default, onReceive: @Sendable @escaping (Message) -> Void) throws {
         self.configuration = configuration
         self.endpoint = endpoint
         self.port = try Self.registerEndpoint(withName: endpoint, logger: configuration.logger)

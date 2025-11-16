@@ -6,7 +6,7 @@
 //
 
 
-public struct MachHostConfiguration {
+public struct MachHostConfiguration: Sendable {
     public var logger: Logger? = ConsoleLogger()
     // buffer size for receiving messages, you can increase it if you need to receive larger messages
     public var bufferSize = 1024 * 256 // 256kb
