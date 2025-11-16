@@ -27,8 +27,8 @@ A Swift library for Mach-based Inter-Process Communication (IPC) on Darwin syste
 
 MachIPC is optimized for high-throughput messaging:
 
-- **~400,000 messages per second** on a single core
-- **~2.5 microseconds** per message latency
+- **Up to 1,000,000 messages per second** on a single core
+- **~1 μs** per message latency
 - **At least 2x faster** than XPC for message passing
 
 These benchmarks demonstrate the efficiency of direct Mach message passing compared to higher-level IPC frameworks.
